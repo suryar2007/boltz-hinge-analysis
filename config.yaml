@@ -1,0 +1,65 @@
+proteins:
+
+  calmodulin:
+    apo_pdb: 1EXR
+    holo_pdb: 1PRW
+    chain: A
+    remove_solvent: true
+    ligand_ccd: CA
+    ligand_chain: null
+    notes: "large open/closed motion, 4 calcium ions in holo"
+
+  dna_pol_beta:
+    apo_pdb: 1BPD
+    holo_pdb: 2BPG
+    chain: A
+    remove_solvent: true
+    ligand_ccd: null
+    ligand_chain: B
+    notes: "multi-chain structure, keep chain A protein only; DNA is ligand"
+
+  ribose_bp:
+    apo_pdb: 1URP
+    holo_pdb: 2DRI
+    chain: A
+    remove_solvent: true
+    ligand_ccd: RIB
+    ligand_chain: null
+    notes: "classic open/closed hinge; ribose is HETATM"
+
+  uracil_dg:
+    apo_pdb: 1AKZ
+    holo_pdb: 1SSP
+    chain: A
+    remove_solvent: true
+    ligand_ccd: null
+    ligand_chain: B
+    notes: "multi-chain; DNA chain must be included in holo yaml"
+
+  glutamate_bp:
+    apo_pdb: 1WDN
+    holo_pdb: 1GGG
+    chain: A
+    remove_solvent: true
+    ligand_ccd: GLU
+    ligand_chain: null
+    notes: "glutamate binding protein open/closed"
+
+  maltose_bp:
+    apo_pdb: 1N3X
+    holo_pdb: 1NL5
+    chain: A
+    remove_solvent: true
+    ligand_ccd: MAL
+    ligand_chain: null
+    notes: "maltose is HETATM in 1NL5"
+
+  igg:
+    apo_pdb: 8VEV
+    holo_pdb: 8TCA
+    chain: A
+    remove_solvent: true
+    ligand_ccd: null
+    ligand_chain: null
+    notes: "LARGE structure — run separately, may need GPU with more VRAM"
+    skip_by_default: true

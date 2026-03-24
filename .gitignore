@@ -1,0 +1,28 @@
+# Data files (fetched/generated at runtime)
+data/fasta/*.fasta
+data/yaml/apo/*.yaml
+data/yaml/holo/*.yaml
+data/pdb_cif/*.pdb
+data/pdb_cif/*.cif
+data/boltz_output/apo/*.pdb
+data/boltz_output/holo/*.pdb
+
+# Results (generated at runtime)
+results/metrics.csv
+results/sequence_match_report.csv
+results/aligned_pdbs/*.pdb
+results/images/*.png
+results/contact_maps/*.png
+results/dyndom/*/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+
+# Environment
+.env
+.venv/
+venv/
