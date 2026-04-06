@@ -4,7 +4,7 @@ import os
 import sys
 import csv
 
-from Bio import pairwise2
+from Bio.Align import PairwiseAligner
 
 sys.path.insert(0, os.path.dirname(__file__))
 from utils import load_config
@@ -15,8 +15,13 @@ REPORT_CSV = "results/sequence_match_report.csv"
 os.makedirs("results", exist_ok=True)
 
 
-def extract_chain_sequence(fasta_path: str, pdb_id: str, chain: str) -> str | None:
-    """Parse a multi-chain FASTA and return the sequence for the given chain."""
+def extract_chain_sequence(fasta_path: str, pdb_id: str, chain: str,
+                           min_protein_length: int = 50) -> str | None:
+    """Parse a multi-chain FASTA and return the sequence for the given chain.
+
+    Applies min_protein_length filter to avoid returning short DNA/RNA
+    sequences when a protein chain is expected.
+    """
     sequences = {}
     current_header = None
     current_seq = []
@@ -34,21 +39,28 @@ def extract_chain_sequence(fasta_path: str, pdb_id: str, chain: str) -> str | No
         if current_header is not None:
             sequences[current_header] = "".join(current_seq)
 
+    pdb_upper = pdb_id.upper()
+
     for header, seq in sequences.items():
         header_upper = header.upper()
-        pdb_upper = pdb_id.upper()
         if pdb_upper in header_upper:
-            if f"CHAIN {chain.upper()}" in header_upper or f"CHAINS {chain.upper()}" in header_upper:
-                return seq
-            if f"{pdb_upper}_{chain.upper()}" in header_upper:
-                return seq
+            if (f"CHAIN {chain.upper()}" in header_upper
+                    or f"CHAINS {chain.upper()}" in header_upper
+                    or f"{pdb_upper}_{chain.upper()}" in header_upper):
+                if len(seq) >= min_protein_length:
+                    return seq
 
     if len(sequences) == 1:
-        return list(sequences.values())[0]
-
-    for header, seq in sequences.items():
-        if pdb_id.upper() in header.upper():
+        seq = list(sequences.values())[0]
+        if len(seq) >= min_protein_length:
             return seq
+
+    candidates = [
+        (header, seq) for header, seq in sequences.items()
+        if pdb_upper in header.upper() and len(seq) >= min_protein_length
+    ]
+    if candidates:
+        return max(candidates, key=lambda x: len(x[1]))[1]
 
     return None
 
@@ -58,11 +70,20 @@ def check_and_standardize(apo_seq: str, holo_seq: str, name: str) -> tuple[str, 
     if apo_seq == holo_seq:
         return apo_seq, 1.0, "identical"
 
-    alignments = pairwise2.align.globalms(apo_seq, holo_seq, 2, -1, -5, -0.5)
-    best = alignments[0]
+    aligner = PairwiseAligner()
+    aligner.mode = "global"
+    aligner.match_score = 2
+    aligner.mismatch_score = -1
+    aligner.open_gap_score = -5
+    aligner.extend_gap_score = -0.5
+
+    alignments = aligner.align(apo_seq, holo_seq)
+    best = next(iter(alignments))
+
     matched = sum(
-        a == b for a, b in zip(best.seqA, best.seqB)
-        if a != "-" and b != "-"
+        apo_seq[i] == holo_seq[j]
+        for (ts, te), (qs, qe) in zip(best.aligned[0], best.aligned[1])
+        for i, j in zip(range(ts, te), range(qs, qe))
     )
     identity = matched / max(len(apo_seq), len(holo_seq))
 

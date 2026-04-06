@@ -39,9 +39,20 @@ def compute_contact_map(coords: np.ndarray, threshold: float = CONTACT_THRESHOLD
     return (dist < threshold).astype(float)
 
 
-def contact_map_overlap(map1: np.ndarray, map2: np.ndarray) -> dict:
-    """Compute precision, recall, F1 of map1 vs map2 (map2 = ground truth)."""
-    n = min(map1.shape[0], map2.shape[0])
+def contact_map_overlap(map1: np.ndarray, map2: np.ndarray,
+                        label: str = "") -> dict:
+    """Compute precision, recall, F1 of map1 vs map2 (map2 = ground truth).
+
+    Warns if sizes differ significantly — results may not be comparable.
+    """
+    n1, n2 = map1.shape[0], map2.shape[0]
+
+    if abs(n1 - n2) > 10:
+        print(f"[warn] {label}: residue count mismatch — pred={n1}, true={n2}. "
+              f"Comparing only first {min(n1, n2)} residues. "
+              f"Results are NOT directly comparable.")
+
+    n = min(n1, n2)
     m1, m2 = map1[:n, :n], map2[:n, :n]
 
     mask = np.ones_like(m1, dtype=bool)
@@ -60,6 +71,9 @@ def contact_map_overlap(map1: np.ndarray, map2: np.ndarray) -> dict:
         "precision": round(float(precision), 3),
         "recall": round(float(recall), 3),
         "f1": round(float(f1), 3),
+        "n_residues_compared": n,
+        "pred_total": n1,
+        "true_total": n2,
     }
 
 
@@ -102,6 +116,7 @@ def main():
             continue
 
         chain = cfg.get("chain", "A")
+        holo_chain = cfg.get("holo_chain", chain)
 
         files = {
             "boltz_apo": f"data/boltz_output/apo/{name}_apo_model_0.pdb",
@@ -110,12 +125,19 @@ def main():
             "true_holo": f"data/pdb_cif/{cfg['holo_pdb']}_true.pdb",
         }
 
+        chain_for_label = {
+            "boltz_apo": chain,
+            "boltz_holo": chain,
+            "true_apo": chain,
+            "true_holo": holo_chain,
+        }
+
         maps = {}
         for label, path in files.items():
             if not os.path.exists(path):
                 print(f"[skip] {name}/{label}: file not found")
                 continue
-            coords = get_ca_coords(path, chain_id=chain)
+            coords = get_ca_coords(path, chain_id=chain_for_label[label])
             if len(coords) < 10:
                 print(f"[warn] {name}/{label}: only {len(coords)} Cα atoms found, skipping")
                 continue
@@ -128,7 +150,8 @@ def main():
 
         for pred_key, true_key in [("boltz_apo", "true_apo"), ("boltz_holo", "true_holo")]:
             if pred_key in maps and true_key in maps:
-                overlap = contact_map_overlap(maps[pred_key], maps[true_key])
+                overlap = contact_map_overlap(maps[pred_key], maps[true_key],
+                                              label=f"{name} {pred_key}_vs_{true_key}")
                 plot_comparison(
                     maps[pred_key], maps[true_key],
                     f"{name}: {pred_key} vs {true_key}",

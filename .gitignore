@@ -6,6 +6,8 @@ data/pdb_cif/*.pdb
 data/pdb_cif/*.cif
 data/boltz_output/apo/*.pdb
 data/boltz_output/holo/*.pdb
+data/boltz_output/apo/boltz_results_*/
+data/boltz_output/holo/boltz_results_*/
 
 # Results (generated at runtime)
 results/metrics.csv

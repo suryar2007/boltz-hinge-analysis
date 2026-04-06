@@ -7,7 +7,14 @@ from pymol import cmd
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
+# PyMOL-safe: __file__ may not resolve correctly under pymol -cq
+for _p in [
+    os.path.join(os.getcwd(), "scripts"),
+    os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else "",
+]:
+    if _p and _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from utils import load_config
 
 config = load_config()

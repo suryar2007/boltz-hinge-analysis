@@ -32,8 +32,13 @@ def fetch_fasta(pdb_id: str, chain: str) -> str | None:
     return out_path
 
 
-def extract_chain_sequence(fasta_path: str, pdb_id: str, chain: str) -> str | None:
-    """Parse a multi-chain FASTA and return the sequence for the given chain."""
+def extract_chain_sequence(fasta_path: str, pdb_id: str, chain: str,
+                           min_protein_length: int = 50) -> str | None:
+    """Parse a multi-chain FASTA and return the sequence for the given chain.
+
+    Applies min_protein_length filter to avoid returning short DNA/RNA
+    sequences when a protein chain is expected.
+    """
     sequences = {}
     current_header = None
     current_seq = []
@@ -51,32 +56,37 @@ def extract_chain_sequence(fasta_path: str, pdb_id: str, chain: str) -> str | No
         if current_header is not None:
             sequences[current_header] = "".join(current_seq)
 
-    # Match chain — RCSB headers look like: >XXXX_N|Chains A|...
-    # or >XXXX_A|... depending on the entry
+    pdb_upper = pdb_id.upper()
+
+    # Priority 1: explicit chain label match with length check
     for header, seq in sequences.items():
         header_upper = header.upper()
-        pdb_upper = pdb_id.upper()
-
-        # Check for "Chains X" or "Chain X" pattern
         if pdb_upper in header_upper:
-            if f"CHAIN {chain.upper()}" in header_upper or f"CHAINS {chain.upper()}" in header_upper:
-                return seq
-            # Also match "XXXX_A" style
-            if f"{pdb_upper}_{chain.upper()}" in header_upper:
-                return seq
+            if (f"CHAIN {chain.upper()}" in header_upper
+                    or f"CHAINS {chain.upper()}" in header_upper
+                    or f"{pdb_upper}_{chain.upper()}" in header_upper):
+                if len(seq) >= min_protein_length:
+                    return seq
 
-    # Fallback: if only one sequence, use it
+    # Priority 2: single sequence
     if len(sequences) == 1:
-        print(f"[warn] {pdb_id}: chain {chain} not explicitly found, using only available sequence")
-        return list(sequences.values())[0]
-
-    # Fallback: return the first sequence that matches the PDB ID
-    for header, seq in sequences.items():
-        if pdb_id.upper() in header.upper():
-            print(f"[warn] {pdb_id}: chain {chain} ambiguous, using first match: {header[:60]}")
+        seq = list(sequences.values())[0]
+        if len(seq) >= min_protein_length:
+            print(f"[warn] {pdb_id}: chain {chain} not explicitly found, using only available sequence")
             return seq
 
-    print(f"[error] {pdb_id}: could not find chain {chain}")
+    # Priority 3: longest sequence matching PDB ID (protein chains > DNA/RNA)
+    candidates = [
+        (header, seq) for header, seq in sequences.items()
+        if pdb_upper in header.upper() and len(seq) >= min_protein_length
+    ]
+    if candidates:
+        best_header, best_seq = max(candidates, key=lambda x: len(x[1]))
+        print(f"[warn] {pdb_id}: chain {chain} ambiguous, using longest match: "
+              f"{best_header[:60]} ({len(best_seq)} residues)")
+        return best_seq
+
+    print(f"[error] {pdb_id}: could not find chain {chain} with length >= {min_protein_length}")
     return None
 
 

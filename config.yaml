@@ -31,10 +31,11 @@ proteins:
     apo_pdb: 1AKZ
     holo_pdb: 1SSP
     chain: A
+    holo_chain: E
     remove_solvent: true
     ligand_ccd: null
     ligand_chain: B
-    notes: "multi-chain; DNA chain must be included in holo yaml"
+    notes: "multi-chain; 1SSP protein is chain E (A/B are DNA)"
 
   glutamate_bp:
     apo_pdb: 1WDN

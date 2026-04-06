@@ -108,13 +108,36 @@ def make_holo_yaml_ccd(name: str, sequence: str, ccd_code: str) -> str:
     return path
 
 
+def detect_sequence_type(seq: str) -> str:
+    """Detect if sequence is protein, DNA, or RNA based on composition."""
+    seq_upper = seq.upper()
+    dna_bases = set("ATCGN")
+    rna_bases = set("AUCGN")
+    chars = set(seq_upper)
+
+    if chars <= dna_bases and "T" in chars:
+        return "dna"
+    if chars <= rna_bases and "U" in chars:
+        return "rna"
+    if chars <= (dna_bases | rna_bases) and len(seq) < 50:
+        return "dna"
+    return "protein"
+
+
 def make_holo_yaml_chain(name: str, protein_seq: str, ligand_seq: str) -> str:
-    """Create holo YAML with a separate protein/nucleotide chain as ligand."""
+    """Create holo YAML with a separate chain as ligand, using correct entity type."""
+    seq_type = detect_sequence_type(ligand_seq)
+
+    if seq_type in ("dna", "rna"):
+        ligand_entry = {seq_type: {"id": "B", "sequence": ligand_seq}}
+    else:
+        ligand_entry = {"protein": {"id": "B", "sequence": ligand_seq, "msa": "empty"}}
+
     doc = {
         "version": 1,
         "sequences": [
             {"protein": {"id": "A", "sequence": protein_seq, "msa": "empty"}},
-            {"protein": {"id": "B", "sequence": ligand_seq, "msa": "empty"}},
+            ligand_entry,
         ],
     }
     path = os.path.join(HOLO_YAML_DIR, f"{name}_holo.yaml")

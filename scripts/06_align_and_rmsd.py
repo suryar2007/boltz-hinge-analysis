@@ -7,7 +7,14 @@ from pymol import cmd
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
+# PyMOL-safe: __file__ may not resolve correctly under pymol -cq
+for _p in [
+    os.path.join(os.getcwd(), "scripts"),
+    os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else "",
+]:
+    if _p and _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from utils import load_config, append_metric
 
 config = load_config()
@@ -56,6 +63,7 @@ for name, cfg in config["proteins"].items():
     apo_pdb = cfg["apo_pdb"]
     holo_pdb = cfg["holo_pdb"]
     chain = cfg.get("chain", "A")
+    holo_chain = cfg.get("holo_chain", chain)
 
     boltz_apo = f"data/boltz_output/apo/{name}_apo_model_0.pdb"
     boltz_holo = f"data/boltz_output/holo/{name}_holo_model_0.pdb"
@@ -81,7 +89,7 @@ for name, cfg in config["proteins"].items():
     if os.path.exists(boltz_holo) and os.path.exists(true_holo):
         cmd.reinitialize()
         load_and_clean(boltz_holo, "pred_holo", chain)
-        load_and_clean(true_holo, "true_holo", chain)
+        load_and_clean(true_holo, "true_holo", holo_chain)
         cmd.color("cyan", "pred_holo")
         cmd.color("magenta", "true_holo")
         rmsd, n = align_pair("pred_holo", "true_holo", f"{name} boltz_holo vs true_holo")
@@ -96,7 +104,7 @@ for name, cfg in config["proteins"].items():
     if os.path.exists(true_apo) and os.path.exists(true_holo):
         cmd.reinitialize()
         load_and_clean(true_apo, "true_apo", chain)
-        load_and_clean(true_holo, "true_holo", chain)
+        load_and_clean(true_holo, "true_holo", holo_chain)
         cmd.color("cyan", "true_apo")
         cmd.color("magenta", "true_holo")
         rmsd, n = align_pair("true_apo", "true_holo", f"{name} true_apo vs true_holo")

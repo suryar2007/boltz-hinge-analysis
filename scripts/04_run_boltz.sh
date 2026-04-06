@@ -15,16 +15,24 @@ run_boltz() {
     fi
 
     echo "[run] Boltz: $name"
-    boltz predict "$yaml" \
+    boltz predict --no_kernels "$yaml" \
         --out_dir "$out_dir" \
         --accelerator "$DEVICE" \
         --output_format pdb
 
-    # Rename to clean convention
-    local generated=$(find "$out_dir" -name "*.pdb" -newer "$yaml" | head -1)
-    if [ -n "$generated" ]; then
-        mv "$generated" "$expected"
+    # Boltz writes to: {out_dir}/boltz_results_{name}/predictions/{name}/{name}_model_0.pdb
+    local boltz_pdb="${out_dir}/boltz_results_${name}/predictions/${name}/${name}_model_0.pdb"
+    if [ -f "$boltz_pdb" ]; then
+        cp "$boltz_pdb" "$expected"
         echo "[ok] saved to $expected"
+    else
+        local fallback=$(find "${out_dir}/boltz_results_${name}" -name "*.pdb" 2>/dev/null | head -1)
+        if [ -n "$fallback" ]; then
+            cp "$fallback" "$expected"
+            echo "[ok] saved to $expected (fallback)"
+        else
+            echo "[error] No PDB found for $name in ${out_dir}/boltz_results_${name}"
+        fi
     fi
 }
 
